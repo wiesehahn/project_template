@@ -1,22 +1,21 @@
-# Header template used in R Scripts with RStudio snippets. 
-# Snippet from https://gist.github.com/wiesehahn/2e3d2cb28297053e5c2055b7529495a9
-
 
 ##___________________________________________________
 ##
-## Script name: 
+## Script name: create_catalog.R
 ##
 ## Purpose of script:
+## create catalog from las files files and store on disk for faster loading
 ##
 ##
 ## Author: Jens Wiesehahn
-## Copyright (c) Jens Wiesehahn, 2022
+## Copyright (c) Jens Wiesehahn, 2021
 ## Email: wiesehahn.jens@gmail.com
 ##
-## Date Created: 
+## Date Created: 2021-11-05
 ##
 ## Notes:
-##
+## The catalog can be read from R file using `load(here("data/interim/lidr-catalog.RData"))`
+## The projection has to be set afterwards using `projection(ctg) <- 25832`
 ##
 ##___________________________________________________
 
@@ -40,10 +39,27 @@
 
 renv::restore()
 library(here)
-
+library(lidR)
+library(dplyr)
 ##___________________________________________________
 
-## load functions into memory
-# source("code/functions/some_script.R")
 
-##___________________________________________________
+file <- here("data/interim/lidr-catalog.RData")
+
+folder1 <- here("K:/aktiver_datenbestand/ni/lverm/las/stand_2021_0923/daten/3D_Punktwolke_Teil1")
+folder2 <- here("K:/aktiver_datenbestand/ni/lverm/las/stand_2021_0923/daten/3D_Punktwolke_Teil2")
+ctg = readLAScatalog(c(folder1, folder2))
+st_crs(ctg) <- 25832
+
+info <- sf::st_read("K:/aktiver_datenbestand/ni/lverm/las/stand_2021_0923/doku/3D_Punktwolke_gesamtÜbersicht.shp") %>%
+  mutate(Data.Year = as.integer(A_JAHR),
+         Data.Month = as.integer(A_MONAT)) %>%
+  select(Data.Year, Data.Month) %>%
+  st_centroid()
+ctg@data <- ctg@data %>% st_join(info)
+
+
+save(ctg, file = file)
+
+
+

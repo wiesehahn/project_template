@@ -1,0 +1,94 @@
+##___________________________________________________
+##
+## Script name: las_to_rgbdtm.R
+##
+## Purpose of script:
+## Function to create a Digital Terrain Model and store data as RGB encoded Raster
+## 
+## DTM and Hillshade are stored at given location.
+##
+## Author: Jens Wiesehahn
+## Copyright (c) Jens Wiesehahn, 2022
+## Email: wiesehahn.jens@gmail.com
+##
+## Date Created: 2022-06-01
+##
+## Notes:
+##
+##
+##___________________________________________________
+
+library(lidR)
+
+#### function to write dtm as rgb encoded raster
+
+to_terrainrgb <- function(dtm)
+{
+  startingvalue <- 10000
+  precision <- 0.01
+  rfactor <- 256*256 * precision
+  gfactor <- 256 * precision
+  
+  r <- floor((startingvalue +dtm)*(1/precision) / 256 / 256)
+  g <- floor((startingvalue +dtm - r*rfactor)*(1/precision) / 256) 
+  b <- floor((startingvalue +dtm - r*rfactor - g*gfactor)*(1/precision))
+  
+  terrainrgb <- c(r,g,b)
+  
+  return(terrainrgb)
+  rm("r","g", "b", "terrainrgb")
+}
+
+
+
+write_rast = function(rast, file)
+{
+  file1 = tools::file_path_sans_ext(file)
+  file1 = paste0(file1, "_temp.tif")
+  terra::writeRaster(rast, file1, datatype="INT1U", NAflag=NA, gdal=c("COMPRESS=DEFLATE", "PREDICTOR=2"))
+  
+  # with overviews
+  #gdalUtils::gdaladdo(paste0(file, "_temp.tif"), r="nearest", levels=c(2,4,8,16,32))
+  
+  gdalUtils::gdal_translate(paste0(file, "_temp.tif"),
+                            paste0(file, ".tif"),
+                            of="GTiff",
+                            co=c("TILED=YES", "COMPRESS=WEBP", "WEBP_LOSSLESS=True", "NUM_THREADS=ALL_CPUS", "COPY_SRC_OVERVIEWS=YES", "DISCARD_LSB=0,0,2", "BLOCKXSIZE=512", "BLOCKYSIZE=512"))
+
+  file.remove(paste0(file, "_temp.tif"))
+}
+
+
+create_terrainrgb <- function(las, resolution = 1)
+{
+  if (is(las, "LAScatalog"))  {
+    las@output_options$drivers$SpatRaster = list(
+      write = write_rast,
+      object = "rast",
+      path = "file",
+      extension = "",
+      param = list())
+    options <- list(automerge = FALSE, need_buffer = TRUE)
+    opt_select(las) <- "xyzc"
+    opt_filter(las) <- "-keep_class 2"     #"-keep_class 2 -keep_class 9"
+    return(catalog_apply(las, create_terrainrgb, resolution=resolution, .options = options))
+  }
+  else if (is(las, "LAScluster")) {
+    las <- readLAS(las)
+    if (is.empty(las)) return(NULL) 
+    terrainrgb <- create_terrainrgb(las, resolution=resolution)
+    terrainrgb <- terra::crop(terrainrgb, ext(chunk))
+    return(terrainrgb)
+  }
+  else if (is(las, "LAS")) {
+    dtm <- rasterize_terrain(las, resolution, tin(), pkg = "terra")
+    
+    terrainrgb <- to_terrainrgb(dtm)
+    
+    return(terrainrgb)
+  }
+  else {
+    stop("This type is not supported.")
+  }
+}
+
