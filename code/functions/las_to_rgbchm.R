@@ -68,7 +68,7 @@ create_terrainrgb <- function(las, resolution = 1)
       extension = "",
       param = list())
     options <- list(automerge = FALSE, need_buffer = TRUE)
-    #opt_select(las) <- "xyzc"
+    opt_select(las) <- "xyzc"
     opt_filter(las) <- "-drop_class 7 -drop_class 15"
     return(catalog_apply(las, create_terrainrgb, resolution=resolution, .options = options))
   }
