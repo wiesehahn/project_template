@@ -50,7 +50,7 @@ source("code/functions/las_to_rgbchm.R")
 
 #### apply function
 
-load(here::here("data/interim/lidr-catalog.RData"))
+load(here::here("data/interim/lidr-catalog-new.RData"))
 
 storage_path <- here("data/processed/rgbchm")
 opt_output_files(ctg) <- paste0(storage_path, "/{XLEFT}_{YBOTTOM}_rgbchm")
@@ -61,7 +61,7 @@ opt_stop_early(ctg) <- FALSE
 
 
 # run for tiles in certain area
-aoi <- sf::st_bbox(c(xmin = 6, xmax = 12, ymax = 52, ymin = 51), crs = st_crs(4326)) %>%
+aoi <- sf::st_bbox(c(xmin = 6, xmax = 12, ymax = 54, ymin = 51), crs = st_crs(4326)) %>%
   sf::st_as_sfc() %>%
   sf::st_transform(st_crs(ctg))
 
@@ -74,16 +74,17 @@ ctg@data <- ctg@data %>%
                                sf::st_intersects(ctg@data, aoi, sparse = FALSE) ~ TRUE,
                                TRUE ~ FALSE))
 
-#mapview::mapview(ctg@data, zcol="processed")
+# mapview::mapview(ctg@data, zcol="processed")
+ summary(as.factor(ctg@data$processed))
 
 # set up parallel processing
 library(future)
-plan(multisession, workers = 8L)
+plan(multisession, workers = 6L)
 
 start_time <- Sys.time()
 create_terrainrgb(ctg, 0.25)
 end_time <- Sys.time()
-end_time - start_time
+print(end_time - start_time)
 
 
 

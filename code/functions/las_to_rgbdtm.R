@@ -70,7 +70,7 @@ create_terrainrgb <- function(las, resolution = 1)
       param = list())
     options <- list(automerge = FALSE, need_buffer = TRUE)
     opt_select(las) <- "xyzc"
-    opt_filter(las) <- "-keep_class 2"     #"-keep_class 2 -keep_class 9"
+    opt_filter(las) <- "-keep_class 2 -keep_class 8 -keep_class 9 -keep_class 11"
     return(catalog_apply(las, create_terrainrgb, resolution=resolution, .options = options))
   }
   else if (is(las, "LAScluster")) {
